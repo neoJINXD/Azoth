@@ -1,42 +1,14 @@
 // use std::io::prelude::*;
-#![allow(unused_imports)] // temp
-use url::{Url, Host};
 use std::io::{Read, Write};
 use std::net::{SocketAddr, IpAddr, TcpListener, TcpStream, ToSocketAddrs, Shutdown};
-use std::str::from_utf8;
+// use error_chain::error_chain;
+use reqwest::{Client, Request};
 
 pub fn test() {
     println!("test print");
 }
 
-pub fn create_connection(addr: String) {
-    match TcpStream::connect(addr) {
-        Ok(mut stream) => {
-            print!("Connection Established");
-            let mut data = [0 as u8; 6];
-            match stream.read_exact(&mut data)
-            {
-                Ok(_) => {
-                    let text = from_utf8(&data).unwrap();
-                    println!("{}", text);
-                }
-                Err(e) => {
-                    println!("Failed to read data {}", e);
-                }
-            }
-        } 
-        Err(e) => {
-            println!("ERROR: {}", e);
-        }
-    }
-}
-
-pub fn run() {
-    let _url = Url::parse("httpbin.org/get?project=azoth");
-    // create_connection("httpbin.org/get?project=azoth".to_string());
-    let host = "httpbin.org:80";
-    let path = "/get?project=azoth";
-    
+pub fn create_connection(host: &str, path: &str) {
     // establish connection
     let mut stream = TcpStream::connect(host).expect("ERORR: Could not connect to server");
 
@@ -68,6 +40,17 @@ pub fn run() {
     stream
         .shutdown(Shutdown::Both)   
         .expect("ERROR: Shutdown failed");
+}
 
-    test();
+
+pub async fn run(client : &Client) -> Result<(), Box<dyn std::error::Error>> {
+    let res = client
+        .get("http://httpbin.org/get?project=azoth")
+        .header("key", "value")
+        .send()
+        .await?
+        .text()
+        .await?;
+    println!("{:?}", res);
+    Ok(())
 }
