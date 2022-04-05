@@ -4,11 +4,11 @@ pub struct Ex {
 }
 
 trait ICanDoShit {
-    fn doShit(&self);
+    fn do_shit(&self);
 }
 
 impl ICanDoShit for Ex {
-    fn doShit(&self) {
+    fn do_shit(&self) {
         println!("zooweemama param:{} with param2:{}!", self.param, self.para);
     }
 }

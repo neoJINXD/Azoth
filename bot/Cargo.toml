@@ -7,8 +7,10 @@ authors = ["Steyr"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-discord_lib = { path = "../lib" }
-# futures = "0.3.21"
+serenity =  { version = "0.10.10", default-features = false, features = ["client", "gateway", "rustls_backend", "model"] }
+tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
 dotenv = "0.15.0"
-reqwest = { version = "0.11", features = ["json"] }
-tokio = { version = "1", features = ["full"] }
+serde = "1.0.136"
+serde_json = "1.0.79"
+log = "0.4.16"
+env_logger = "0.9.0"
