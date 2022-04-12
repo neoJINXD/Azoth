@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 
 use azoth::Azoth;
 
-use azoth::GENERAL_GROUP;
+use azoth::{GENERAL_GROUP, HELP};
 
 
 
@@ -34,14 +34,18 @@ async fn main() {
             std::process::exit(1);
         },
     };
-    log::debug!("Env Token = {:}", bot_token);
+    // log::debug!("Env Token = {:}", bot_token);
     
     let mut _d : exmaple::Ex;
 
     let framework = StandardFramework::new()
-        .configure(|c| c.with_whitespace(true).prefix("~"))
-        .before(azoth::before)
-        .group(&GENERAL_GROUP);
+        .configure(|c| c
+                    .with_whitespace(true)
+                    .prefix("~"))
+                .before(azoth::before)
+                .after(azoth::after)
+                .help(&HELP)
+                .group(&GENERAL_GROUP);
 
     let mut client = 
         Client::builder(&bot_token)
