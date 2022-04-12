@@ -1,6 +1,6 @@
 pub struct Ex {
-    param : i32,
-    para : String,
+    param: i32,
+    para: String,
 }
 
 trait ICanDoShit {

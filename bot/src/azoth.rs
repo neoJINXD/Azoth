@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     sync::{
-        atomic::{AtomicBool, Ordering, AtomicUsize},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     time::Duration,
@@ -10,14 +10,23 @@ use std::{
 use chrono::TimeZone;
 use serenity::{
     async_trait,
+    client::bridge::gateway::{ShardId, ShardManager},
     framework::standard::{
-        macros::{command, group, hook, help},
+        help_commands,
+        macros::{command, group, help, hook},
         Args,
-        CommandResult, help_commands, HelpOptions, CommandGroup,
+        CommandGroup,
         // StandardFramework,
+        CommandResult,
+        HelpOptions,
     },
-    model::{channel::Message, id::{ChannelId, UserId}, id::GuildId, gateway::Ready},
-    prelude::*, client::bridge::gateway::{ShardManager, ShardId},
+    model::{
+        channel::Message,
+        gateway::Ready,
+        id::GuildId,
+        id::{ChannelId, UserId},
+    },
+    prelude::*,
 };
 use tokio::sync::RwLock;
 
@@ -32,6 +41,8 @@ pub struct MessageCount;
 impl TypeMapKey for MessageCount {
     type Value = Arc<AtomicUsize>;
 }
+
+// TODO eventually have all expect error messages pass through the logger
 
 #[group]
 #[commands(ping, command_usage, komi, github, quiz)]
@@ -48,16 +59,19 @@ async fn command_usage(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
     let command_name = match args.single_quoted::<String>() {
         Ok(x) => x,
         Err(_) => {
-            msg.reply(ctx, "I require an argument to run this command.").await?;
+            msg.reply(ctx, "I require an argument to run this command.")
+                .await?;
             return Ok(());
-        },
+        }
     };
 
     let amount = {
         let data_read = ctx.data.read().await;
 
-        let command_counter_lock =
-            data_read.get::<CommandCount>().expect("Expected CommandCounter in TypeMap.").clone();
+        let command_counter_lock = data_read
+            .get::<CommandCount>()
+            .expect("Expected CommandCounter in TypeMap.")
+            .clone();
 
         let command_counter = command_counter_lock.read().await;
 
@@ -65,11 +79,18 @@ async fn command_usage(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
     };
 
     if amount == 0 {
-        msg.reply(ctx, format!("The command `{}` has not yet been used.", command_name)).await?;
+        msg.reply(
+            ctx,
+            format!("The command `{}` has not yet been used.", command_name),
+        )
+        .await?;
     } else {
         msg.reply(
             ctx,
-            format!("The command `{}` has been used {} time/s this session!", command_name, amount),
+            format!(
+                "The command `{}` has been used {} time/s this session!",
+                command_name, amount
+            ),
         )
         .await?;
     }
@@ -82,16 +103,21 @@ async fn komi(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id
         .send_message(&ctx, |m| {
             m.embed(|e| {
-                e.title("Komi")
-                    .field("Link", "https://twitter.com/Marse_6/status/1511987699481473029", false)
-            }).add_file("komi.jpg")
-        }).await.expect("Error sending cursed");
+                e.title("Komi").field(
+                    "Link",
+                    "https://twitter.com/Marse_6/status/1511987699481473029",
+                    false,
+                )
+            })
+            .add_file("komi.jpg")
+        })
+        .await
+        .expect("Error sending cursed");
     Ok(())
 }
 
 #[command]
 async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-
     let username = match args.single_quoted::<String>() {
         Ok(x) => x,
         Err(_) => {
@@ -100,11 +126,15 @@ async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         }
     };
     log::debug!("Username received: {}", username);
-    log::debug!("URL formed: {}", format!("https://api.github.com/users/{}", username));
+    log::debug!(
+        "URL formed: {}",
+        format!("https://api.github.com/users/{}", username)
+    );
 
     let client = reqwest::Client::new();
 
-    let res = client.get(format!("https://api.github.com/users/{}/events", username))
+    let res = client
+        .get(format!("https://api.github.com/users/{}/events", username))
         .header(reqwest::header::USER_AGENT, "Azoth 0.1")
         .send()
         .await?
@@ -113,22 +143,31 @@ async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let json_res: serde_json::Value = serde_json::from_str(&res).expect("Failed to parse");
     let latest_activity = &json_res[0];
-    
+
     log::debug!("Response: {}", latest_activity["created_at"].to_string());
-    let date = chrono::NaiveDateTime::parse_from_str(&latest_activity["created_at"].to_string(), "\"%Y-%m-%dT%H:%M:%SZ\"")?;
+    let date = chrono::NaiveDateTime::parse_from_str(
+        &latest_activity["created_at"].to_string(),
+        "\"%Y-%m-%dT%H:%M:%SZ\"",
+    )?;
     let date_time: chrono::DateTime<chrono::Utc> = chrono::Utc.from_local_datetime(&date).unwrap();
     let time_passed = chrono::Utc::now() - date_time;
     log::debug!("Last activity detected at: {:?}", date_time);
     log::debug!("It has been {:?}", time_passed);
-    
-    msg.reply(ctx, format!("It has been {} days since you last made a commit", time_passed.num_days())).await?;
+
+    msg.reply(
+        ctx,
+        format!(
+            "It has been {} days since you last made a commit",
+            time_passed.num_days()
+        ),
+    )
+    .await?;
 
     Ok(())
 }
 
 #[command]
 async fn quiz(ctx: &Context, msg: &Message) -> CommandResult {
-    
     // let client = reqwest::Client::new()
     let res = reqwest::get("https://opentdb.com/api.php?amount=5&difficulty=easy")
         .await
@@ -144,11 +183,10 @@ pub struct Azoth {
     pub is_loop: AtomicBool,
 }
 
-
 #[async_trait]
 impl EventHandler for Azoth {
     // this runs if a message is detected
-    async fn message (&self, ctx: Context, msg: Message) {
+    async fn message(&self, ctx: Context, msg: Message) {
         // log::debug!("Message detected: {:?}", msg);
         if msg.content == "!bind" {
             log::debug!("{:?}", msg.channel_id.as_u64().clone());
@@ -161,12 +199,12 @@ impl EventHandler for Azoth {
     async fn ready(&self, _: Context, ready: Ready) {
         log::info!("{} is connected and ready to serve", ready.user.name);
     }
-    
+
     // async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
     //     log::info!("Cache built!");
 
     //     let ctx = Arc::new(ctx);
-    
+
     //     if !self.is_loop.load(Ordering::Relaxed) {
     //         let ctx1 = Arc::clone(&ctx);
     //         tokio::spawn(async move {
@@ -180,22 +218,22 @@ impl EventHandler for Azoth {
     //     }
     // }
     // async fn typing_start(&self, ctx: Context, event: TypingStartEvent) {
-        //     log::debug!("Typing detected from: {:?}", event.user_id);
+    //     log::debug!("Typing detected from: {:?}", event.user_id);
 
     //     if let Err(e) = event.channel_id.say(&ctx.http, "The next line you will say is `bepis`").await {
-        //         log::error!("Failed to send message: {:?}", e);
-        //     }
-        // }
-    }
+    //         log::error!("Failed to send message: {:?}", e);
+    //     }
+    // }
+}
 
 async fn log_sys(ctx: Arc<Context>) {
     let cpu = sys_info::loadavg().unwrap();
     let mem = sys_info::mem_info().unwrap();
-    
+
     let msg = ChannelId(715362232183160882) // TODO not have this hardcoded ideally
-    .send_message(&ctx, |m| {
-        m.embed(|e| {
-            e.title("System Usage")
+        .send_message(&ctx, |m| {
+            m.embed(|e| {
+                e.title("System Usage")
                     .field("CPU Avg:", format!("{:.2}%", cpu.one * 10.0), false)
                     .field(
                         "Mem Usage:",
@@ -206,14 +244,13 @@ async fn log_sys(ctx: Arc<Context>) {
                         ),
                         false,
                     )
-                    
-                })
-        }).await;
+            })
+        })
+        .await;
     if let Err(e) = msg {
         log::error!("Error sending recurring message {:?}", e);
     }
 }
-
 
 #[help]
 #[individual_command_tip = "If you need help with a command, pass it as an argument"]
@@ -231,7 +268,7 @@ async fn help(
     owners: HashSet<UserId>,
 ) -> CommandResult {
     let _ = help_commands::with_embeds(ctx, msg, args, help_options, groups, owners).await;
-    
+
     Ok(())
 }
 
@@ -241,7 +278,10 @@ pub async fn before(ctx: &Context, msg: &Message, command_name: &str) -> bool {
 
     let count_lock = {
         let data_read = ctx.data.read().await;
-        data_read.get::<CommandCount>().expect("Expected Count in TypeMap").clone()
+        data_read
+            .get::<CommandCount>()
+            .expect("Expected Count in TypeMap")
+            .clone()
     };
 
     {
@@ -259,7 +299,9 @@ pub async fn after(ctx: &Context, msg: &Message, cmd_name: &str, cmd_result: Com
         Ok(()) => log::debug!("Processed command {}", cmd_name),
         Err(e) => {
             log::error!("Command {} failed with error {:?}", cmd_name, e);
-            msg.reply(ctx, "Command failed, check logs").await.expect("Failed to send failure text");
-        },
+            msg.reply(ctx, "Command failed, check logs")
+                .await
+                .expect("Failed to send failure text");
+        }
     }
 }
