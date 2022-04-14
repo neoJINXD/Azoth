@@ -36,6 +36,12 @@ impl TypeMapKey for CommandCount {
     type Value = Arc<RwLock<HashMap<String, u64>>>;
 }
 
+pub struct GithubUsers;
+
+impl TypeMapKey for GithubUsers {
+    type Value = Arc<RwLock<HashMap<u64, String>>>;
+}
+
 pub struct MessageCount;
 
 impl TypeMapKey for MessageCount {
@@ -126,42 +132,26 @@ async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         }
     };
     log::debug!("Username received: {}", username);
-    log::debug!(
-        "URL formed: {}",
-        format!("https://api.github.com/users/{}", username)
-    );
 
-    let client = reqwest::Client::new();
+    let git_lock = {
+        let data_read = ctx.data.read().await;
+        data_read
+            .get::<GithubUsers>()
+            .expect("Expected GithubUsers in TypeMap")
+            .clone()
+    };
 
-    let res = client
-        .get(format!("https://api.github.com/users/{}/events", username))
-        .header(reqwest::header::USER_AGENT, "Azoth 0.1")
-        .send()
-        .await?
-        .text()
+    // TODO maybe have author id's received from mention instead?
+    {
+        let mut git_user = git_lock.write().await;
+        let _entry = git_user
+            .entry(msg.author.id.as_u64().clone())
+            .or_insert(username.clone());
+        // *entry = username.clone();
+    }
+
+    msg.reply(ctx, format!("Now tracking {}'s commits", username))
         .await?;
-
-    let json_res: serde_json::Value = serde_json::from_str(&res).expect("Failed to parse");
-    let latest_activity = &json_res[0];
-
-    log::debug!("Response: {}", latest_activity["created_at"].to_string());
-    let date = chrono::NaiveDateTime::parse_from_str(
-        &latest_activity["created_at"].to_string(),
-        "\"%Y-%m-%dT%H:%M:%SZ\"",
-    )?;
-    let date_time: chrono::DateTime<chrono::Utc> = chrono::Utc.from_local_datetime(&date).unwrap();
-    let time_passed = chrono::Utc::now() - date_time;
-    log::debug!("Last activity detected at: {:?}", date_time);
-    log::debug!("It has been {:?}", time_passed);
-
-    msg.reply(
-        ctx,
-        format!(
-            "It has been {} days since you last made a commit",
-            time_passed.num_days()
-        ),
-    )
-    .await?;
 
     Ok(())
 }
@@ -200,23 +190,25 @@ impl EventHandler for Azoth {
         log::info!("{} is connected and ready to serve", ready.user.name);
     }
 
-    // async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-    //     log::info!("Cache built!");
+    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+        log::info!("Cache built!");
 
-    //     let ctx = Arc::new(ctx);
+        let ctx = Arc::new(ctx);
 
-    //     if !self.is_loop.load(Ordering::Relaxed) {
-    //         let ctx1 = Arc::clone(&ctx);
-    //         tokio::spawn(async move {
-    //             loop {
-    //                 log_sys(Arc::clone(&ctx1)).await;
-    //                 tokio::time::sleep(Duration::from_secs(10)).await;
-    //             }
-    //         });
+        if !self.is_loop.load(Ordering::Relaxed) {
+            let ctx1 = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
+                        log::error!("Something failed in recurring github function {:?}", e);
+                    };
+                    tokio::time::sleep(Duration::from_secs(20)).await;
+                }
+            });
 
-    //         self.is_loop.swap(true, Ordering::Relaxed);
-    //     }
-    // }
+            self.is_loop.swap(true, Ordering::Relaxed);
+        }
+    }
     // async fn typing_start(&self, ctx: Context, event: TypingStartEvent) {
     //     log::debug!("Typing detected from: {:?}", event.user_id);
 
@@ -224,6 +216,93 @@ impl EventHandler for Azoth {
     //         log::error!("Failed to send message: {:?}", e);
     //     }
     // }
+}
+async fn roast_github(ctx: Arc<Context>) -> CommandResult {
+    // TODO have a list of users that you can ~~add~~ and remove with a command
+
+    let (mut iterator, len) = {
+        let data_read = ctx.data.read().await;
+
+        let git_lock = data_read
+            .get::<GithubUsers>()
+            .expect("Expected GithubUsers in TypeMap")
+            .clone();
+
+        let map = git_lock.read().await;
+
+        (map.clone().into_iter(), map.len()) // ! this feels stupid
+    };
+
+    let msg = ChannelId(715362232183160882)
+        .send_message(&ctx, |m| {
+            m.content(format!("I am tracking {} github users", len))
+        })
+        .await;
+
+    if let Err(e) = msg {
+        log::error!("Error sending recurring message {:?}", e);
+    };
+
+    loop {
+        let entry;
+        match iterator.next() {
+            Some(x) => entry = x,
+            None => break,
+        };
+        let user_id = entry.0;
+        let git_username = entry.1;
+
+        log::debug!("Username received: {}", git_username);
+        log::debug!(
+            "URL formed: {}",
+            format!("https://api.github.com/users/{}/events", git_username)
+        );
+
+        let client = reqwest::Client::new();
+
+        let res = client
+            .get(format!(
+                "https://api.github.com/users/{}/events",
+                git_username
+            ))
+            .header(reqwest::header::USER_AGENT, "Azoth 0.1")
+            .send()
+            .await?
+            .text()
+            .await?;
+
+        let json_res: serde_json::Value =
+            serde_json::from_str(&res).expect("Failed to parse res into JSON");
+        let latest_activity = &json_res[0];
+
+        log::debug!("Response: {}", latest_activity["created_at"].to_string());
+        let date = chrono::NaiveDateTime::parse_from_str(
+            &latest_activity["created_at"].to_string(),
+            "\"%Y-%m-%dT%H:%M:%SZ\"",
+        )?;
+        let date_time: chrono::DateTime<chrono::Utc> =
+            chrono::Utc.from_local_datetime(&date).unwrap();
+        let time_passed = chrono::Utc::now() - date_time;
+        log::debug!("Last activity detected at: {:?}", date_time);
+        log::debug!("It has been {:?}", time_passed);
+
+        let user_mention = UserId(user_id).mention();
+
+        let msg = ChannelId(715362232183160882)
+            .send_message(&ctx, |m| {
+                m.content(format!(
+                    "{} it has been {} days since your last commit",
+                    user_mention,
+                    time_passed.num_days()
+                ))
+            })
+            .await;
+
+        if let Err(e) = msg {
+            log::error!("Error sending recurring message {:?}", e);
+        };
+    }
+    Ok(())
 }
 
 async fn log_sys(ctx: Arc<Context>) {

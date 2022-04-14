@@ -56,6 +56,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<azoth::CommandCount>(Arc::new(RwLock::new(HashMap::default())));
+        data.insert::<azoth::GithubUsers>(Arc::new(RwLock::new(HashMap::default())));
         data.insert::<azoth::MessageCount>(Arc::new(AtomicUsize::new(0)));
     }
 
