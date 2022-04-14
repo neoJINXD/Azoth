@@ -49,9 +49,10 @@ impl TypeMapKey for MessageCount {
 }
 
 // TODO eventually have all expect error messages pass through the logger
+// TODO split functions into different files based on their purposes
 
 #[group]
-#[commands(ping, command_usage, komi, github, quiz)]
+#[commands(ping, command_usage, github, quiz)]
 struct General;
 
 #[command]
@@ -105,24 +106,7 @@ async fn command_usage(ctx: &Context, msg: &Message, mut args: Args) -> CommandR
 }
 
 #[command]
-async fn komi(ctx: &Context, msg: &Message) -> CommandResult {
-    msg.channel_id
-        .send_message(&ctx, |m| {
-            m.embed(|e| {
-                e.title("Komi").field(
-                    "Link",
-                    "https://twitter.com/Marse_6/status/1511987699481473029",
-                    false,
-                )
-            })
-            .add_file("komi.jpg")
-        })
-        .await
-        .expect("Error sending cursed");
-    Ok(())
-}
-
-#[command]
+#[aliases("gh")]
 async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let username = match args.single_quoted::<String>() {
         Ok(x) => x,
