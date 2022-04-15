@@ -52,7 +52,7 @@ impl TypeMapKey for MessageCount {
 // TODO split functions into different files based on their purposes
 
 #[group]
-#[commands(ping, command_usage, github, quiz)]
+#[commands(ping, command_usage, github, github_remove, quiz)]
 struct General;
 
 #[command]
@@ -131,10 +131,38 @@ async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         let _entry = git_user
             .entry(msg.author.id.as_u64().clone())
             .or_insert(username.clone());
-        // *entry = username.clone();
     }
 
     msg.reply(ctx, format!("Now tracking {}'s commits", username))
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+#[aliases("ghrm")]
+async fn github_remove(ctx: &Context, msg: &Message) -> CommandResult {
+    let git_lock = {
+        let data_read = ctx.data.read().await;
+        data_read
+            .get::<GithubUsers>()
+            .expect("Expected GithubUsers in TypeMap")
+            .clone()
+    };
+
+    let username = {
+        let mut git_user = git_lock.write().await;
+        let entry = git_user
+            .remove_entry(msg.author.id.as_u64());
+        match entry {
+            Some(x) => x.1,
+            None => {
+                std::process::exit(-1);
+            }
+        }
+    };
+
+    msg.reply(ctx, format!("No longer tracking {}", username))
         .await?;
 
     Ok(())
@@ -159,17 +187,6 @@ pub struct Azoth {
 
 #[async_trait]
 impl EventHandler for Azoth {
-    // this runs if a message is detected
-    async fn message(&self, ctx: Context, msg: Message) {
-        // log::debug!("Message detected: {:?}", msg);
-        if msg.content == "!bind" {
-            log::debug!("{:?}", msg.channel_id.as_u64().clone());
-            if let Err(e) = msg.channel_id.say(&ctx.http, "Channel Bound").await {
-                log::error!("Error binding {:?}", e)
-            }
-        }
-    }
-
     async fn ready(&self, _: Context, ready: Ready) {
         log::info!("{} is connected and ready to serve", ready.user.name);
     }
@@ -193,13 +210,6 @@ impl EventHandler for Azoth {
             self.is_loop.swap(true, Ordering::Relaxed);
         }
     }
-    // async fn typing_start(&self, ctx: Context, event: TypingStartEvent) {
-    //     log::debug!("Typing detected from: {:?}", event.user_id);
-
-    //     if let Err(e) = event.channel_id.say(&ctx.http, "The next line you will say is `bepis`").await {
-    //         log::error!("Failed to send message: {:?}", e);
-    //     }
-    // }
 }
 async fn roast_github(ctx: Arc<Context>) -> CommandResult {
     // TODO have a list of users that you can ~~add~~ and remove with a command
