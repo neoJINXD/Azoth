@@ -1,5 +1,6 @@
 mod azoth;
 mod exmaple;
+mod data;
 
 use dotenv::dotenv;
 use serenity::{framework::StandardFramework, Client};
@@ -9,20 +10,37 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicUsize},
         Arc,
-    },
+    }, hash::Hash,
 };
 use tokio::sync::RwLock;
 
-// use serenity::framework::*;
-// use serde_json;
-
 use azoth::Azoth;
-
 use azoth::{GENERAL_GROUP, HELP};
+use data::{SaveData, GitLink, save_data, load_data};
 
 #[tokio::main]
 async fn main() {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("bot"));
+
+    log::info!("Checking for saved configs");
+
+    // let mut _temp_data = SaveData { github_users: vec![
+    //     GitLink { discord_id: 11111111111111111, github_username: "test".to_owned(), },
+    //     GitLink { discord_id: 22222222222222222, github_username: "test2".to_owned(), },
+    // ], };
+
+    // save_data("config.json".to_owned(), _temp_data.clone());
+
+    let (_success, data) = load_data("config.json".to_owned());
+
+    if !_success {
+        save_data("config.json".to_owned(), data.clone());
+    }
+    let bot_data = HashMap::new();
+    for 
+
+    log::info!("Data loaded");
+    log::debug!("Data loaded as \n{:?}", data);
 
     log::info!("Running Program");
 

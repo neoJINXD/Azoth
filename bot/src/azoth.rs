@@ -29,6 +29,7 @@ use serenity::{
     prelude::*,
 };
 use tokio::sync::RwLock;
+use crate::data::SaveData;
 
 pub struct CommandCount;
 
@@ -191,25 +192,25 @@ impl EventHandler for Azoth {
         log::info!("{} is connected and ready to serve", ready.user.name);
     }
 
-    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-        log::info!("Cache built!");
+    // async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+    //     log::info!("Cache built!");
 
-        let ctx = Arc::new(ctx);
+    //     let ctx = Arc::new(ctx);
 
-        if !self.is_loop.load(Ordering::Relaxed) {
-            let ctx1 = Arc::clone(&ctx);
-            tokio::spawn(async move {
-                loop {
-                    if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
-                        log::error!("Something failed in recurring github function {:?}", e);
-                    };
-                    tokio::time::sleep(Duration::from_secs(20)).await;
-                }
-            });
+    //     if !self.is_loop.load(Ordering::Relaxed) {
+    //         let ctx1 = Arc::clone(&ctx);
+    //         tokio::spawn(async move {
+    //             loop {
+    //                 if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
+    //                     log::error!("Something failed in recurring github function {:?}", e);
+    //                 };
+    //                 tokio::time::sleep(Duration::from_secs(20)).await;
+    //             }
+    //         });
 
-            self.is_loop.swap(true, Ordering::Relaxed);
-        }
-    }
+    //         self.is_loop.swap(true, Ordering::Relaxed);
+    //     }
+    // }
 }
 async fn roast_github(ctx: Arc<Context>) -> CommandResult {
     // TODO have a list of users that you can ~~add~~ and remove with a command
