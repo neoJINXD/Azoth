@@ -1,6 +1,6 @@
 mod azoth;
-mod exmaple;
 mod data;
+mod exmaple;
 
 use dotenv::dotenv;
 use serenity::{framework::StandardFramework, Client};
@@ -10,13 +10,13 @@ use std::{
     sync::{
         atomic::{AtomicBool, AtomicUsize},
         Arc,
-    }, hash::Hash,
+    },
 };
 use tokio::sync::RwLock;
 
 use azoth::Azoth;
 use azoth::{GENERAL_GROUP, HELP};
-use data::{SaveData, GitLink, save_data, load_data};
+use data::{load_data, save_data};
 
 #[tokio::main]
 async fn main() {
@@ -24,23 +24,14 @@ async fn main() {
 
     log::info!("Checking for saved configs");
 
-    // let mut _temp_data = SaveData { github_users: vec![
-    //     GitLink { discord_id: 11111111111111111, github_username: "test".to_owned(), },
-    //     GitLink { discord_id: 22222222222222222, github_username: "test2".to_owned(), },
-    // ], };
-
-    // save_data("config.json".to_owned(), _temp_data.clone());
-
-    let (_success, data) = load_data("config.json".to_owned());
+    let (_success, bot_data) = load_data("config.json".to_owned());
 
     if !_success {
-        save_data("config.json".to_owned(), data.clone());
+        save_data("config.json".to_owned(), bot_data.clone());
     }
-    let bot_data = HashMap::new();
-    for 
 
     log::info!("Data loaded");
-    log::debug!("Data loaded as \n{:?}", data);
+    log::debug!("Data loaded as \n{:?}", bot_data);
 
     log::info!("Running Program");
 
@@ -52,7 +43,6 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    // log::debug!("Env Token = {:}", bot_token);
 
     let mut _d: exmaple::Ex;
 
@@ -74,7 +64,7 @@ async fn main() {
     {
         let mut data = client.data.write().await;
         data.insert::<azoth::CommandCount>(Arc::new(RwLock::new(HashMap::default())));
-        data.insert::<azoth::GithubUsers>(Arc::new(RwLock::new(HashMap::default())));
+        data.insert::<azoth::GithubUsers>(Arc::new(RwLock::new(bot_data)));
         data.insert::<azoth::MessageCount>(Arc::new(AtomicUsize::new(0)));
     }
 

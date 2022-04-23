@@ -7,10 +7,11 @@ use std::{
     time::Duration,
 };
 
+use crate::data::{save_data, GitLink, SaveData};
 use chrono::TimeZone;
 use serenity::{
     async_trait,
-    client::bridge::gateway::{ShardId, ShardManager},
+    // client::bridge::gateway::{ShardId, ShardManager},
     framework::standard::{
         help_commands,
         macros::{command, group, help, hook},
@@ -29,7 +30,6 @@ use serenity::{
     prelude::*,
 };
 use tokio::sync::RwLock;
-use crate::data::SaveData;
 
 pub struct CommandCount;
 
@@ -40,7 +40,7 @@ impl TypeMapKey for CommandCount {
 pub struct GithubUsers;
 
 impl TypeMapKey for GithubUsers {
-    type Value = Arc<RwLock<HashMap<u64, String>>>;
+    type Value = Arc<RwLock<SaveData>>;
 }
 
 pub struct MessageCount;
@@ -129,9 +129,12 @@ async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     // TODO maybe have author id's received from mention instead?
     {
         let mut git_user = git_lock.write().await;
-        let _entry = git_user
-            .entry(msg.author.id.as_u64().clone())
-            .or_insert(username.clone());
+        let _entry = git_user.github_users.push(GitLink::new(
+            msg.author.id.as_u64().clone(),
+            username.clone(),
+        ));
+        let data = git_user.to_owned();
+        save_data("config.json".to_owned(), data);
     }
 
     msg.reply(ctx, format!("Now tracking {}'s commits", username))
@@ -153,14 +156,20 @@ async fn github_remove(ctx: &Context, msg: &Message) -> CommandResult {
 
     let username = {
         let mut git_user = git_lock.write().await;
-        let entry = git_user
-            .remove_entry(msg.author.id.as_u64());
-        match entry {
-            Some(x) => x.1,
+        let index = git_user
+            .github_users
+            .iter()
+            .position(|x| x.discord_id == msg.author.id.as_u64().clone());
+        let name = match index {
+            Some(x) => git_user.github_users.remove(x),
             None => {
-                std::process::exit(-1);
+                msg.reply(ctx, "You do not have a github username assigned!")
+                    .await?;
+                return Ok(());
             }
-        }
+        };
+        save_data("config.json".to_owned(), git_user.to_owned());
+        name.github_username
     };
 
     msg.reply(ctx, format!("No longer tracking {}", username))
@@ -192,29 +201,27 @@ impl EventHandler for Azoth {
         log::info!("{} is connected and ready to serve", ready.user.name);
     }
 
-    // async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
-    //     log::info!("Cache built!");
+    async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
+        log::info!("Cache built!");
 
-    //     let ctx = Arc::new(ctx);
+        let ctx = Arc::new(ctx);
 
-    //     if !self.is_loop.load(Ordering::Relaxed) {
-    //         let ctx1 = Arc::clone(&ctx);
-    //         tokio::spawn(async move {
-    //             loop {
-    //                 if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
-    //                     log::error!("Something failed in recurring github function {:?}", e);
-    //                 };
-    //                 tokio::time::sleep(Duration::from_secs(20)).await;
-    //             }
-    //         });
+        if !self.is_loop.load(Ordering::Relaxed) {
+            let ctx1 = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
+                        log::error!("Something failed in recurring github function {:?}", e);
+                    };
+                    tokio::time::sleep(Duration::from_secs(20)).await;
+                }
+            });
 
-    //         self.is_loop.swap(true, Ordering::Relaxed);
-    //     }
-    // }
+            self.is_loop.swap(true, Ordering::Relaxed);
+        }
+    }
 }
 async fn roast_github(ctx: Arc<Context>) -> CommandResult {
-    // TODO have a list of users that you can ~~add~~ and remove with a command
-
     let (mut iterator, len) = {
         let data_read = ctx.data.read().await;
 
@@ -223,9 +230,12 @@ async fn roast_github(ctx: Arc<Context>) -> CommandResult {
             .expect("Expected GithubUsers in TypeMap")
             .clone();
 
-        let map = git_lock.read().await;
+        let bector = git_lock.read().await;
 
-        (map.clone().into_iter(), map.len()) // ! this feels stupid
+        (
+            bector.clone().github_users.into_iter(),
+            bector.github_users.len(),
+        ) // ! this feels stupid
     };
 
     let msg = ChannelId(715362232183160882)
@@ -244,8 +254,8 @@ async fn roast_github(ctx: Arc<Context>) -> CommandResult {
             Some(x) => entry = x,
             None => break,
         };
-        let user_id = entry.0;
-        let git_username = entry.1;
+        let user_id = entry.discord_id;
+        let git_username = entry.github_username;
 
         log::debug!("Username received: {}", git_username);
         log::debug!(
@@ -298,32 +308,6 @@ async fn roast_github(ctx: Arc<Context>) -> CommandResult {
         };
     }
     Ok(())
-}
-
-async fn log_sys(ctx: Arc<Context>) {
-    let cpu = sys_info::loadavg().unwrap();
-    let mem = sys_info::mem_info().unwrap();
-
-    let msg = ChannelId(715362232183160882) // TODO not have this hardcoded ideally
-        .send_message(&ctx, |m| {
-            m.embed(|e| {
-                e.title("System Usage")
-                    .field("CPU Avg:", format!("{:.2}%", cpu.one * 10.0), false)
-                    .field(
-                        "Mem Usage:",
-                        format!(
-                            "{:.2} MB Free out of {:.2} MB",
-                            mem.free as f32 / 1000.0,
-                            mem.total as f32 / 1000.0
-                        ),
-                        false,
-                    )
-            })
-        })
-        .await;
-    if let Err(e) = msg {
-        log::error!("Error sending recurring message {:?}", e);
-    }
 }
 
 #[help]
