@@ -13,7 +13,7 @@ Discord bot made in Rust
 
 - [x] Run the code in the `github` command on a timer and auto send message based on result
   - [x] Can add or remove accounts to check
-  - [ ] Need to customize message based on response from github
+  - [x] Need to customize message based on response from github
   - [x] Saves users to checks somewhere so that the bot does not reset
   - [x] Loads data so that the bot does not reset
 - [ ] `quiz` gets 1 question from the trivia API and person who requested the original question can answer with a reply
