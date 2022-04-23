@@ -17,5 +17,10 @@ Discord bot made in Rust
   - [x] Saves users to checks somewhere so that the bot does not reset
   - [x] Loads data so that the bot does not reset
 - [ ] `quiz` gets 1 question from the trivia API and person who requested the original question can answer with a reply
-  - [ ] questions can be answered as a react
-  - [ ] questions can be answered from embeded buttons (need to check discord api to see how that is doable, example from Aether Hunts discord server)
+  - [ ] as prototype, get a question from the database
+    - [ ] questions can be answered as a react
+    - [ ] questions can be answered from embeded buttons (need to check discord api to see how that is doable, example from Aether Hunts discord server)
+  - [ ] create game from original message
+    - [ ] custom player length
+    - [ ] keep track of players score
+    - [ ] keep track of whose turn it is, random people cant interfere
