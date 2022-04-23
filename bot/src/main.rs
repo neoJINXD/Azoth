@@ -1,6 +1,8 @@
 mod azoth;
 mod data;
-mod exmaple;
+mod hooks;
+mod recurring;
+mod commands;
 
 use dotenv::dotenv;
 use serenity::{framework::StandardFramework, Client};
@@ -15,7 +17,7 @@ use std::{
 use tokio::sync::RwLock;
 
 use azoth::Azoth;
-use azoth::{GENERAL_GROUP, HELP};
+use commands::{GENERAL_GROUP, HELP};
 use data::{load_data, save_data};
 
 #[tokio::main]
@@ -44,12 +46,10 @@ async fn main() {
         }
     };
 
-    let mut _d: exmaple::Ex;
-
     let framework = StandardFramework::new()
         .configure(|c| c.with_whitespace(true).prefix("~"))
-        .before(azoth::before)
-        .after(azoth::after)
+        .before(hooks::before)
+        .after(hooks::after)
         .help(&HELP)
         .group(&GENERAL_GROUP);
 
