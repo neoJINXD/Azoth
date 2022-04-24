@@ -5,7 +5,7 @@ mod recurring;
 mod commands;
 
 use dotenv::dotenv;
-use serenity::{framework::StandardFramework, Client};
+use serenity::{framework::StandardFramework, Client, prelude::GatewayIntents};
 use std::{
     collections::HashMap,
     env,
@@ -53,7 +53,13 @@ async fn main() {
         .help(&HELP)
         .group(&GENERAL_GROUP);
 
-    let mut client = Client::builder(&bot_token)
+    // TODO check if all are necessarily needed
+    let intents = GatewayIntents::GUILD_MESSAGES |
+        GatewayIntents::DIRECT_MESSAGES |
+        GatewayIntents::MESSAGE_CONTENT |
+        GatewayIntents::GUILDS;
+
+    let mut client = Client::builder(&bot_token, intents)
         .event_handler(Azoth {
             is_loop: AtomicBool::new(false),
         })

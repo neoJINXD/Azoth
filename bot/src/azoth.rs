@@ -2,6 +2,7 @@ use crate::data::SaveData;
 use crate::recurring::roast_github;
 
 use std::{
+    fmt,
     collections::{HashMap},
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -16,7 +17,7 @@ use serenity::{
         gateway::Ready,
         id::GuildId,
     },
-    prelude::*,
+    prelude::*, framework::standard::CommandResult,
 };
 use tokio::sync::RwLock;
 
@@ -59,16 +60,50 @@ impl EventHandler for Azoth {
 
         if !self.is_loop.load(Ordering::Relaxed) {
             let ctx1 = Arc::clone(&ctx);
-            tokio::spawn(async move {
-                loop {
-                    if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
-                        log::error!("Something failed in recurring github function {:?}", e);
-                    };
-                    tokio::time::sleep(Duration::from_secs(20)).await;
-                }
-            });
+            // ! TEMP COMMENTING OUT OF THIS CODE
+            // tokio::spawn(async move {
+            //     loop {
+            //         if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
+            //             log::error!("Something failed in recurring github function {:?}", e);
+            //         };
+            //         tokio::time::sleep(Duration::from_secs(20)).await;
+            //     }
+            // });
+
+            // let ctx2 = Arc::clone(&ctx);
+            // tokio::spawn(async move {
+            //     loop {
+            //         if let Err(e) = quiz_temp(Arc::clone(&ctx2)).await {
+            //             log::error!("Something failed in recurring temp function {:?}", e);
+            //         };
+            //         tokio::time::sleep(Duration::from_secs(20)).await;
+            //     }
+            // });
 
             self.is_loop.swap(true, Ordering::Relaxed);
         }
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct QuizResponse {
+    response_code: i32,
+    pub results: Vec<serde_json::Value>,
+}
+
+// ! TEMP
+async fn quiz_temp(ctx: Arc<Context>) -> CommandResult {
+    let res = reqwest::get("https://opentdb.com/api.php?amount=5&difficulty=easy")
+        .await?
+        .text()
+        .await?;
+
+    let json_res: QuizResponse = serde_json::from_str(&res).expect("Failed to parse quiz response to JSON");
+
+    log::debug!("Res from quiz API {}", res);
+    log::debug!("Trying to get value from my defined struct: {:?}", json_res.results[0]);
+    log::debug!("Getting just a question: {}", json_res.results[0]["question"]);
+    
+    
+    Ok(())
 }
