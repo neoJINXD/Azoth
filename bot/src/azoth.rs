@@ -27,9 +27,9 @@ impl TypeMapKey for CommandCount {
     type Value = Arc<RwLock<HashMap<String, u64>>>;
 }
 
-pub struct GithubUsers;
+pub struct BotSaveData;
 
-impl TypeMapKey for GithubUsers {
+impl TypeMapKey for BotSaveData {
     type Value = Arc<RwLock<SaveData>>;
 }
 
@@ -41,6 +41,12 @@ impl TypeMapKey for MessageCount {
 
 // TODO eventually have all expect error messages pass through the logger
 // TODO split functions into different files based on their purposes
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct QuizResponse {
+    response_code: i32,
+    pub results: Vec<serde_json::Value>,
+}
 
 
 pub struct Azoth {
@@ -83,12 +89,6 @@ impl EventHandler for Azoth {
             self.is_loop.swap(true, Ordering::Relaxed);
         }
     }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
-pub struct QuizResponse {
-    response_code: i32,
-    pub results: Vec<serde_json::Value>,
 }
 
 // ! TEMP

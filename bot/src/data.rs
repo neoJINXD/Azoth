@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-
+use std::collections::HashMap;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SaveData {
     pub github_users: Vec<GitLink>,
+    pub quiz_scores: HashMap<u64, u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -19,6 +20,12 @@ impl GitLink {
         }
     }
 }
+
+// #[derive(Debug, Serialize, Deserialize, Clone)]
+// pub struct UserScore {
+//     discord_id: u64,
+//     score: u64,
+// }
 
 pub fn save_data(path: String, data: SaveData) -> bool {
     let json_data = serde_json::to_string_pretty(&data).unwrap();
@@ -37,6 +44,7 @@ pub fn save_data(path: String, data: SaveData) -> bool {
 pub fn load_data(path: String) -> (bool, SaveData) {
     let mut loaded_data = SaveData {
         github_users: Vec::new(),
+        quiz_scores: HashMap::new(),
     };
 
     let file_data = match std::fs::read_to_string(&path) {
@@ -46,6 +54,7 @@ pub fn load_data(path: String) -> (bool, SaveData) {
             return (false, loaded_data);
         }
     };
+    // TODO should prob add a check to see if save is missing a field and adds it
     loaded_data = serde_json::from_str(&file_data).unwrap();
 
     (true, loaded_data)

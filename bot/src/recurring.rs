@@ -1,4 +1,4 @@
-use crate::{azoth::GithubUsers};
+use crate::{azoth::BotSaveData};
 
 use std::sync::Arc;
 use chrono::TimeZone;
@@ -13,8 +13,8 @@ pub async fn roast_github(ctx: Arc<Context>) -> CommandResult {
         let data_read = ctx.data.read().await;
 
         let git_lock = data_read
-            .get::<GithubUsers>()
-            .expect("Expected GithubUsers in TypeMap")
+            .get::<BotSaveData>()
+            .expect("Expected BotSaveData in TypeMap")
             .clone();
 
         let bector = git_lock.read().await;

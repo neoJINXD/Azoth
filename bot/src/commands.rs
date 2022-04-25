@@ -1,4 +1,4 @@
-use crate::{data::{save_data, GitLink}, azoth::GithubUsers};
+use crate::{data::{save_data, GitLink}, azoth::BotSaveData};
 use crate::azoth::{CommandCount, QuizResponse};
 
 use std::{fmt, collections::HashSet, str::FromStr};
@@ -89,8 +89,8 @@ pub async fn github(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let git_lock = {
         let data_read = ctx.data.read().await;
         data_read
-            .get::<GithubUsers>()
-            .expect("Expected GithubUsers in TypeMap")
+            .get::<BotSaveData>()
+            .expect("Expected BotSaveData in TypeMap")
             .clone()
     };
 
@@ -117,8 +117,8 @@ pub async fn github_remove(ctx: &Context, msg: &Message) -> CommandResult {
     let git_lock = {
         let data_read = ctx.data.read().await;
         data_read
-            .get::<GithubUsers>()
-            .expect("Expected GithubUsers in TypeMap")
+            .get::<BotSaveData>()
+            .expect("Expected BotSaveData in TypeMap")
             .clone()
     };
 
@@ -220,8 +220,12 @@ impl Question {
 }
 
 #[command]
-pub async fn quiz(ctx: &Context, msg: &Message) -> CommandResult {
-    let res = reqwest::get("https://opentdb.com/api.php?amount=5&difficulty=easy")
+pub async fn quiz(ctx: &Context, msg: &Message ,mut args: Args) -> CommandResult {
+    let difficulty = match args.single_quoted::<String>() {
+        Ok(x) => x,
+        Err(_) => "easy".to_owned(),
+    };
+    let res = reqwest::get(format!("https://opentdb.com/api.php?amount=1&difficulty={}", difficulty))
     // let res = reqwest::get("https://opentdb.com/api.php?amount=10&difficulty=easy&type=boolean")
         .await?
         .text()
@@ -285,8 +289,36 @@ pub async fn quiz(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id.send_message(&ctx, |m| {
         m.content(format!("{} {}", message, mention))
     }).await.unwrap();
+    
+    if !was_answer_correct {
+        return Ok(());
+    }
 
-    log::info!("Receive response from discord");
+    let data_lock = {
+        let data_read = ctx.data.read().await;
+        data_read
+            .get::<BotSaveData>()
+            .expect("Expected BotSaveData in TypeMap")
+            .clone()
+    };
+    
+    let user_id = msg.author.id.as_u64();
+
+    // let old_score = {
+
+    //     let save = data_lock.write().await;
+    //     save.quiz_scores.get(&user_id).map_or(0, |x| *x)
+    // };
+
+    {
+        let mut save = data_lock.write().await;
+        let old_score = save.quiz_scores.get(&user_id).map_or(0, |x| *x);
+        let _entry = save.quiz_scores.insert(user_id.to_owned(), old_score+1);
+        save_data("config.json".to_owned(), save.to_owned());
+    }
+
+
+    //log::info!("Receive response from discord");
     Ok(())
 }
 
