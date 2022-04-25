@@ -7,7 +7,8 @@ Discord bot made in Rust
 - `~ping` replies back with a pong
 - `~github <username>` | `~gh <username>`: adds new user to be tracked for github pings, uses the userid of the user of the command to ping them
 - `~github_remove` | `~ghrm`: removes the user by discord id from the list of tracked users
-- `~quiz`: gets random question from the open trivia database
+- `~quiz <difficulty=easy>`: gets random question from the open trivia database, can pass in a difficutly, either `easy`, `medium`, or `hard`. will by default fetch easy questions
+- `~scores`: displays the scores of everyone who has used the bot
 
 ## Still needs implementing
 
