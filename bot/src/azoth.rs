@@ -70,15 +70,14 @@ impl EventHandler for Azoth {
 
         if !self.is_loop.load(Ordering::Relaxed) {
             let ctx1 = Arc::clone(&ctx);
-            // ! TEMP COMMENTING OUT OF THIS CODE
-            // tokio::spawn(async move {
-            //     loop {
-            //         if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
-            //             log::error!("Something failed in recurring github function {:?}", e);
-            //         };
-            //         tokio::time::sleep(Duration::from_secs(20)).await;
-            //     }
-            // });
+            tokio::spawn(async move {
+                loop {
+                    if let Err(e) = roast_github(Arc::clone(&ctx1)).await {
+                        log::error!("Something failed in recurring github function {:?}", e);
+                    };
+                    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+                }
+            });
 
             self.is_loop.swap(true, Ordering::Relaxed);
         }
