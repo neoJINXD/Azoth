@@ -21,12 +21,6 @@ impl GitLink {
     }
 }
 
-// #[derive(Debug, Serialize, Deserialize, Clone)]
-// pub struct UserScore {
-//     discord_id: u64,
-//     score: u64,
-// }
-
 pub fn save_data(path: String, data: SaveData) -> bool {
     let json_data = serde_json::to_string_pretty(&data).unwrap();
 

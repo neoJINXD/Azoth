@@ -1,11 +1,11 @@
 mod azoth;
+mod commands;
 mod data;
 mod hooks;
 mod recurring;
-mod commands;
 
 use dotenv::dotenv;
-use serenity::{framework::StandardFramework, Client, prelude::GatewayIntents};
+use serenity::{framework::StandardFramework, prelude::GatewayIntents, Client};
 use std::{
     collections::HashMap,
     env,
@@ -17,7 +17,8 @@ use std::{
 use tokio::sync::RwLock;
 
 use azoth::Azoth;
-use commands::{GENERAL_GROUP, HELP};
+use azoth::GENERAL_GROUP;
+use commands::misc::HELP;
 use data::{load_data, save_data};
 
 #[tokio::main]
@@ -54,10 +55,10 @@ async fn main() {
         .group(&GENERAL_GROUP);
 
     // TODO check if all are necessarily needed
-    let intents = GatewayIntents::GUILD_MESSAGES |
-        GatewayIntents::DIRECT_MESSAGES |
-        GatewayIntents::MESSAGE_CONTENT |
-        GatewayIntents::GUILDS;
+    let intents = GatewayIntents::GUILD_MESSAGES
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT
+        | GatewayIntents::GUILDS;
 
     let mut client = Client::builder(&bot_token, intents)
         .event_handler(Azoth {

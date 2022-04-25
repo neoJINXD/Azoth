@@ -1,23 +1,24 @@
+use crate::commands::{
+    github::{GITHUB_COMMAND, GITHUB_REMOVE_COMMAND},
+    misc::PING_COMMAND,
+    quiz::{QUIZ_COMMAND, SCORES_COMMAND},
+};
 use crate::data::SaveData;
 use crate::recurring::roast_github;
 
 use std::{
-    fmt,
-    collections::{HashMap},
+    collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
-    time::Duration,
 };
 
 use serenity::{
     async_trait,
-    model::{
-        gateway::Ready,
-        id::GuildId,
-    },
-    prelude::*, framework::standard::CommandResult,
+    framework::standard::macros::group,
+    model::{gateway::Ready, id::GuildId},
+    prelude::*,
 };
 use tokio::sync::RwLock;
 
@@ -48,6 +49,9 @@ pub struct QuizResponse {
     pub results: Vec<serde_json::Value>,
 }
 
+#[group]
+#[commands(ping, github, github_remove, quiz, scores)]
+struct General;
 
 pub struct Azoth {
     pub is_loop: AtomicBool,
@@ -76,34 +80,7 @@ impl EventHandler for Azoth {
             //     }
             // });
 
-            // let ctx2 = Arc::clone(&ctx);
-            // tokio::spawn(async move {
-            //     loop {
-            //         if let Err(e) = quiz_temp(Arc::clone(&ctx2)).await {
-            //             log::error!("Something failed in recurring temp function {:?}", e);
-            //         };
-            //         tokio::time::sleep(Duration::from_secs(20)).await;
-            //     }
-            // });
-
             self.is_loop.swap(true, Ordering::Relaxed);
         }
     }
-}
-
-// ! TEMP
-async fn quiz_temp(ctx: Arc<Context>) -> CommandResult {
-    let res = reqwest::get("https://opentdb.com/api.php?amount=5&difficulty=easy")
-        .await?
-        .text()
-        .await?;
-
-    let json_res: QuizResponse = serde_json::from_str(&res).expect("Failed to parse quiz response to JSON");
-
-    log::debug!("Res from quiz API {}", res);
-    log::debug!("Trying to get value from my defined struct: {:?}", json_res.results[0]);
-    log::debug!("Getting just a question: {}", json_res.results[0]["question"]);
-    
-    
-    Ok(())
 }

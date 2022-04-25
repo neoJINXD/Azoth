@@ -1,10 +1,7 @@
 use crate::azoth::CommandCount;
 
 use serenity::{
-    framework::standard::{
-        macros::hook,
-        CommandResult,
-    },
+    framework::standard::{macros::hook, CommandResult},
     model::channel::Message,
     prelude::*,
 };

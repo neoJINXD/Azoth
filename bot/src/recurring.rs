@@ -1,12 +1,12 @@
-use crate::{azoth::BotSaveData};
+use crate::azoth::BotSaveData;
 
-use std::sync::Arc;
 use chrono::TimeZone;
 use serenity::{
     framework::standard::CommandResult,
     model::id::{ChannelId, UserId},
     prelude::*,
 };
+use std::sync::Arc;
 
 pub async fn roast_github(ctx: Arc<Context>) -> CommandResult {
     let (mut iterator, len) = {
@@ -83,14 +83,22 @@ pub async fn roast_github(ctx: Arc<Context>) -> CommandResult {
         let left = "<:zwidepeepoL:967238704395587664>";
         let right = "<:zwidepeepoR:967238704462704640>";
         let reply = match time_passed.num_days() {
-            0..=2 => format!("Good job {}! {} days your last public commit! {}{}", user_mention, time_passed.num_days(), left, right),
-            _ => format!("{} EYYYYOOOOO its been {} since your last public commit, get working o3o", user_mention, time_passed.num_days()),
+            0..=2 => format!(
+                "Good job {}! {} days your last public commit! {}{}",
+                user_mention,
+                time_passed.num_days(),
+                left,
+                right
+            ),
+            _ => format!(
+                "{} EYYYYOOOOO its been {} since your last public commit, get working o3o",
+                user_mention,
+                time_passed.num_days()
+            ),
         };
 
         let msg = ChannelId(715362232183160882)
-            .send_message(&ctx, |m| {
-                m.content(reply)
-            })
+            .send_message(&ctx, |m| m.content(reply))
             .await;
 
         if let Err(e) = msg {
