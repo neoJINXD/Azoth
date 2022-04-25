@@ -327,22 +327,15 @@ pub async fn scores(ctx: &Context, msg: &Message) -> CommandResult {
     };
 
     let mut user_scores: Vec<(String, u64)> = Vec::new();
-    let client = reqwest::Client::new();
 
     for (k, v) in scores {
-        // ! might get limited by API restrictions, if command is used too many times
-        let res = client.get(format!("https://discord.com/api/v9/users/{}", k))
-            .header("Authorization", "Bot ~~NEEDS BOT TOKEN~~") // ! DONT PUSH
-            .send()
-            .await.unwrap().text().await.unwrap();
-        
-        let json_res: serde_json::Value = serde_json::from_str(&res).unwrap();
-        log::debug!("Trying to get username from rest api: {:?}", json_res["username"]);
+        let username = ctx.http.get_user(k).await.unwrap().name;
+        log::debug!("Trying to get username from rest api: {:?}", username);
 
-        user_scores.push((json_res["username"].to_string(), v.clone()));
+        user_scores.push((username.clone(), v.clone()));
     }
 
-    let m = msg.channel_id
+    msg.channel_id
         .send_message(&ctx, |m| {
             m.embed(|e| {
                 e.title("Quiz Global Scores")
